@@ -215,5 +215,11 @@ print(f"Properties: {[str(p).split('#')[-1] for p in py.get_object_properties()]
 print(f"Is Django a Framework? {ClassAssertion(framework, django) in [a.component for a in py.get_axioms()]}")
 
 # Is Django a Library? (by inference: Framework ⊑ Library)
-print(f"Is Django a Library? {ClassAssertion(library, django) in [a.component for a in py.get_axioms()]}")
+# Direct assertion check (no inference):
+print(f"Is Django a Library (direct)? {ClassAssertion(library, django) in [a.component for a in py.get_axioms()]}")
+
+# Inference-aware check using ancestor classes:
+django_classes = {a.component.ce for a in py.get_axioms() if isinstance(a.component, ClassAssertion) and a.component.i == django}
+is_library_inferred = library in django_classes or any(str(library) in py.get_ancestors(str(cls)) for cls in django_classes)
+print(f"Is Django a Library (with inference)? {is_library_inferred}")
 ```
