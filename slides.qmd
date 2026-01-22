@@ -1,0 +1,219 @@
+---
+title: Web Ontology Language
+subtitle: "*The `OWL` (ontologies) are ~~not~~ what they seem...*"
+author: Joey Carpinelli
+date: 2026-01-08
+date-format: long
+
+execute:
+    echo: true
+    output: true
+format:
+    revealjs:
+        smaller: true
+---
+
+# Introductions
+
+## Description Logics
+
+*Remember this?*
+
+- Description Logic (DL) formalizes concepts, instances, and relationships.
+- DL has four key definitions:
+  - **concepts** are categories, e.g. *people*;
+  - **individuals** are instances, e.g. *you*;
+  - **properties** relate individuals, e.g. *has-age*;
+  - **axioms** are logical statements, e.g. *all people have an age*.
+
+## Web Ontology Language
+
+*Annoyingly abbreviated as OWL.*
+
+- OWL aims to add formal, semantic information to the *World Wide Web*.
+- The syntax for OWL ontologies are available in everyone's favorite format -- XML -- but other formats are available too.
+- The example below is copied from [`w3.org`](https://www.w3.org/TR/owl-xmlsyntax/).
+
+```xml
+<owlx:Class owlx:name="AllContinents" owlx:complete="true">
+  <owlx:OneOf>
+    <owlx:Individual owlx:name="#Eurasia" />
+    <owlx:Individual owlx:name="#Africa" />
+    <owlx:Individual owlx:name="#NorthAmerica" />
+    <owlx:Individual owlx:name="#SouthAmerica" />
+    <owlx:Individual owlx:name="#Australia" />
+    <owlx:Individual owlx:name="#Antarctica" />
+  </owlx:OneOf>
+</owlx:Class>
+```
+
+## Unique Identifiers
+
+*If we have DL on the web, how do we distinguish between names?*
+
+- Internationalized Resource Identifier (IRI) tags are used to uniquely identify concepts, properties, and individuals within a particular ontology.
+- All concepts, individuals, and properties have URL addresses.
+
+- <https://www.w3.org/2002/07/owl#Thing>
+
+# Explorations
+
+## Rust Crate
+
+*See [`horned-owl`](https://crates.io/crates/horned-owl) on `crates.io`!*
+
+- Concepts, individuals, and properties in OWL use URL syntax!
+- If only there was a wrapper with less syntax...
+
+```rust
+// Reference: https://docs.rs/horned-owl/1.2.0/horned_owl/model/index.html#example
+let b = Build::new_rc();
+let top = TransitiveObjectProperty(
+    ObjectPropertyExpression::ObjectProperty(
+        b.object_property("http://www.example.com/op")));
+```
+
+## Python Package: `py-horned-owl`
+
+*Thanks to PyO3 bindings, you can use [`py-horned-owl`](https://pypi.org/project/py-horned-owl/)!*
+
+- The following example was generated with *Claude Opus 4.5 Thinking*.
+
+```{python}
+#| code-line-numbers: "|5|7-9|11-12|14-18|"
+import pyhornedowl
+from pyhornedowl.model import *
+
+onto = pyhornedowl.PyIndexedOntology()
+onto.add_prefix_mapping("", "https://example.org/university#")
+
+# Classes (declare=True adds DeclareClass axiom)
+for c in [":Person", ":Student", ":Faculty", ":Course", ":Department"]: onto.declare_class(c)
+person, student, faculty = onto.clazz(":Person"), onto.clazz(":Student"), onto.clazz(":Faculty")
+course, department = onto.clazz(":Course"), onto.clazz(":Department")
+
+# Properties
+for p in [":teaches", ":enrolledIn"]: onto.declare_object_property(p)
+teaches, enrolled_in = onto.object_property(":teaches"), onto.object_property(":enrolledIn")
+
+# Hierarchy & constraints
+onto.add_axiom(SubClassOf(student, person))
+onto.add_axiom(SubClassOf(faculty, person))
+onto.add_axiom(DisjointClasses([student, faculty]))
+onto.add_axiom(EquivalentClasses([onto.clazz(":Instructor"), faculty & teaches.some(course)]))
+```
+
+## Individuals & Assertions
+
+*Populating the ontology with data.*
+
+- The following example was generated with *Claude Opus 4.5 Thinking*.
+
+```{python}
+#| code-line-numbers: "|1-4|6-10|12-14|"
+# Individuals
+dr_smith = onto.named_individual(":DrSmith")
+alice = onto.named_individual(":Alice")
+cs101 = onto.named_individual(":CS101")
+
+# Class assertions
+onto.add_axiom(ClassAssertion(faculty, dr_smith))
+onto.add_axiom(ClassAssertion(student, alice))
+onto.add_axiom(ClassAssertion(course, cs101))
+
+# Property assertions
+onto.add_axiom(ObjectPropertyAssertion(teaches, dr_smith, cs101))
+onto.add_axiom(ObjectPropertyAssertion(enrolled_in, alice, cs101))
+```
+
+## Querying the Ontology
+
+*Extracting information from our knowledge base.*
+
+- The following example was generated with *Claude Opus 4.5 Thinking*.
+
+```{python}
+#| code-line-numbers: "|1-3|5-6|"
+# List all declared classes and properties
+print(f"Classes: {[str(c).split('#')[-1] for c in onto.get_classes()]}")
+print(f"Properties: {[str(p).split('#')[-1] for p in onto.get_object_properties()]}")
+
+# Is Alice a Student?
+print(f"Is Alice a Student? {ClassAssertion(student, alice) in [a.component for a in onto.get_axioms()]}")
+```
+
+# Case Study: Python
+
+## Python: Classes & Properties
+
+*Modeling the Python ecosystem.*
+
+- The following example was generated with *Claude Opus 4.5 Thinking*.
+
+```{python}
+#| code-line-numbers: "|5|7-10|12-14|"
+import pyhornedowl
+from pyhornedowl.model import *
+
+py = pyhornedowl.PyIndexedOntology()
+py.add_prefix_mapping("", "https://example.org/python#")
+
+# Classes
+for c in [":Language", ":Library", ":Framework", ":DataType", ":Builtin"]: py.declare_class(c)
+language, library, framework = py.clazz(":Language"), py.clazz(":Library"), py.clazz(":Framework")
+datatype, builtin = py.clazz(":DataType"), py.clazz(":Builtin")
+
+# Properties
+for p in [":hasLibrary", ":dependsOn", ":hasBuiltin"]: py.declare_object_property(p)
+has_library, depends_on, has_builtin = py.object_property(":hasLibrary"), py.object_property(":dependsOn"), py.object_property(":hasBuiltin")
+
+# Hierarchy: Framework is a subclass of Library
+py.add_axiom(SubClassOf(framework, library))
+py.add_axiom(SubClassOf(builtin, datatype))
+```
+
+## Python: Individuals
+
+*Populating with real Python entities.*
+
+- The following example was generated with *Claude Opus 4.5 Thinking*.
+
+```{python}
+#| code-line-numbers: "|1-5|7-12|14-17|"
+# Individuals
+python = py.named_individual(":Python")
+numpy, pandas, django, flask = [py.named_individual(f":{n}") for n in ["NumPy", "Pandas", "Django", "Flask"]]
+int_type, str_type, list_type = [py.named_individual(f":{n}") for n in ["int", "str", "list"]]
+
+# Class assertions
+py.add_axiom(ClassAssertion(language, python))
+py.add_axiom(ClassAssertion(library, numpy))
+py.add_axiom(ClassAssertion(library, pandas))
+py.add_axiom(ClassAssertion(framework, django))
+py.add_axiom(ClassAssertion(framework, flask))
+for t in [int_type, str_type, list_type]: py.add_axiom(ClassAssertion(builtin, t))
+
+# Property assertions
+py.add_axiom(ObjectPropertyAssertion(has_library, python, numpy))
+py.add_axiom(ObjectPropertyAssertion(has_library, python, pandas))
+py.add_axiom(ObjectPropertyAssertion(depends_on, pandas, numpy))
+```
+
+## Python: Queries
+
+*Querying the Python knowledge base.*
+
+- The following example was generated with *Claude Opus 4.5 Thinking*.
+
+```{python}
+#| code-line-numbers: "|1-3|5-6|8-9|"
+# What's in our ontology?
+print(f"Classes: {[str(c).split('#')[-1] for c in py.get_classes()]}")
+print(f"Properties: {[str(p).split('#')[-1] for p in py.get_object_properties()]}")
+
+# Is Django a Framework?
+print(f"Is Django a Framework? {ClassAssertion(framework, django) in [a.component for a in py.get_axioms()]}")
+
+# Is Django a Library? (by inference: Framework ⊑ Library)
+print(f"Is Django a Library? {ClassAssertion(library, django) in [a.component for a in py.get_axioms()]}")
+```
